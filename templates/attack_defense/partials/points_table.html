@@ -1,0 +1,24 @@
+<table class="table table-hover mb-0 text-center align-middle">
+    <thead class="table-light">
+        <tr>
+            <th class="text-start">Team</th>
+            <th>Flag Pts (Attack)</th>
+            <th>SLA Pts (Defense)</th>
+            <th class="bg-success text-white">Total Overall Pts</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for tp in team_points %}
+        <tr>
+            <td class="text-start fw-bold">{{ tp.team }}</td>
+            <td class="text-success">{{ tp.flag_pts }}</td>
+            <td class="text-primary">{{ tp.sla_pts }}</td>
+            <td class="fw-bold fs-5">{{ tp.total_pts }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center py-4 text-muted">No teams found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

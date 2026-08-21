@@ -1,0 +1,59 @@
+<table class="table table-hover mb-0 text-center align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>Session</th>
+            <th>Start Time</th>
+            <th>Team (Attacker)</th>
+            <th>Target Team</th>
+            <th>Own Flag</th>
+            <th>Target Flag</th>
+            <th>Flag Pts</th>
+            <th>SLA Pts</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for session in ad_sessions %}
+        <tr>
+            <td>{{ session.session_number }}</td>
+            <td class="small">{{ session.created_at|date:"M d, H:i:s" }}</td>
+            <td class="fw-bold">{{ session.team }}</td>
+            <td>{{ session.target_team }}</td>
+            <td class="font-monospace small">{{ session.own_flag }}</td>
+            <td class="font-monospace small">{{ session.target_flag }}</td>
+            <td class="text-success fw-bold">{{ session.points_earned }}</td>
+            <td class="text-primary fw-bold">{{ session.defense_points }}</td>
+            <td>
+                {% if session.is_active %}
+                <span class="badge bg-success">Active</span>
+                {% else %}
+                <span class="badge bg-secondary">Stopped</span>
+                {% endif %}
+            </td>
+            <td>
+                <div class="d-flex justify-content-center gap-1">
+                    {% if session.is_active %}
+                    <form method="POST" onsubmit="return confirm('Stop Session {{ session.session_number }}? The daemon will stop rotating flags and awarding SLA points.');">
+                        <input type="hidden" name="action" value="stop_ad_session">
+                        {% csrf_token %}
+                        <input type="hidden" name="session_number" value="{{ session.session_number }}">
+                        <button type="submit" class="btn btn-sm btn-warning" title="Stop Session"><i class="fas fa-stop"></i></button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" onsubmit="return confirm('Delete Session {{ session.session_number }} for all teams? This removes all points forever.');">
+                        <input type="hidden" name="action" value="delete_ad_session">
+                        {% csrf_token %}
+                        <input type="hidden" name="session_number" value="{{ session.session_number }}">
+                        <button type="submit" class="btn btn-sm btn-danger" title="Delete Session"><i class="fas fa-trash"></i></button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="10" class="text-center py-4 text-muted">No sessions configured.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

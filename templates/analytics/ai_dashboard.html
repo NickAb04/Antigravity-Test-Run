@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col text-center">
+        <h2>Intelligent Dashboard (Scikit-Learn)</h2>
+        <p class="text-muted">Analyzing student performance momentum via Linear Regression</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-body bg-light">
+                <form method="GET" class="row gx-3 gy-2 align-items-center">
+                    <div class="col-auto">
+                        <label class="form-label mb-0 fw-bold">Start Time</label>
+                        <input type="datetime-local" name="start_time" class="form-control" value="{{ start_time_val }}">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-0 fw-bold">End Time</label>
+                        <input type="datetime-local" name="end_time" class="form-control" value="{{ end_time_val }}">
+                    </div>
+                    <div class="col-auto mt-4">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Apply Filter</button>
+                        <a href="{% url 'ai_dashboard' %}" class="btn btn-outline-secondary">Clear</a>
+                    </div>
+                    <div class="col-auto mt-4 ms-auto">
+                        {% if start_time_val or end_time_val %}
+                            <a href="{% url 'export_submissions_csv' %}?start_time={{ start_time_val }}&end_time={{ end_time_val }}" class="btn btn-warning"><i class="bi bi-file-earmark-spreadsheet"></i> Export Filtered CSV</a>
+                        {% endif %}
+                        <a href="{% url 'export_submissions_csv' %}" class="btn btn-success"><i class="bi bi-download"></i> Export Full CSV</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+    <div class="col-md-12 mb-4">
+        <div class="card shadow rounded bg-white border-primary">
+            <div class="card-header bg-primary text-white fw-bold">
+                <i class="bi bi-bar-chart"></i> Team Progress Over Time (CTFd Style)
+            </div>
+            <div class="card-body">
+                <div style="height: 350px;">
+                    <canvas id="progressChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow rounded mb-5 bg-white border-warning">
+            <div class="card-header bg-warning text-dark fw-bold">
+                <i class="bi bi-graph-up"></i> Real-Time Momentum Tracking (M_c)
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col" class="text-center" style="width: 25%">Student Username</th>
+                            <th scope="col" style="width: 25%">Team Name</th>
+                            <th scope="col" class="text-center" style="width: 20%">Linear Slope ($M_c$)</th>
+                            <th scope="col" class="text-center" style="width: 30%">Diagnostic State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in analytics_data %}
+                        <tr>
+                            <td class="text-center fw-bold">{{ row.username }}</td>
+                            <td>{{ row.team }}</td>
+                            <td class="text-center font-monospace">
+                                {{ row.momentum }}
+                            </td>
+                            <td class="text-center">
+                                {% if 'Flow' in row.state %}
+                                <span class="badge bg-success shadow-sm">{{ row.state }}</span>
+                                {% elif 'Steady' in row.state %}
+                                <span class="badge bg-primary shadow-sm">{{ row.state }}</span>
+                                {% elif 'Insufficient' in row.state %}
+                                <span class="badge bg-secondary shadow-sm">{{ row.state }}</span>
+                                {% else %}
+                                <span class="badge bg-danger shadow-sm">{{ row.state }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">No participant data available for
+                                analysis.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer text-muted font-monospace small">
+                Calculated using Least Squares ($M_c$). Minimum n=2 data points strictly enforced in backend.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
+<script>
+    const ctx = document.getElementById('progressChart').getContext('2d');
+    const rawData = {{ chart_data_json| safe }};
+
+    // Assign random colors to teams
+    rawData.datasets.forEach(dataset => {
+        let r = Math.floor(Math.random() * 200 + 55);
+        let g = Math.floor(Math.random() * 200 + 55);
+        let b = Math.floor(Math.random() * 200 + 55);
+        dataset.borderColor = `rgb(${r}, ${g}, ${b})`;
+        dataset.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+        dataset.stepped = 'before'; // Gives it that CTFd stair-step look!
+    });
+
+    const progressChart = new Chart(ctx, {
+        type: 'line',
+        data: rawData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { tooltipFormat: 'll HH:mm' },
+                    title: { display: true, text: 'Time (Submission)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Cumulative Score' }
+                }
+            },
+            plugins: {
+                tooltip: { mode: 'index', intersect: false },
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-cogs"></i> Attack Defense Setup</h2>
+        <a href="{% url 'ad_admin_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-5 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Assign VulnBox to Team</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="assign_container">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="team_id" class="form-label">Select Team</label>
+                            <select name="team_id" id="team_id" class="form-select" required>
+                                <option value="">-- Select Team --</option>
+                                {% for team in teams %}
+                                <option value="{{ team.id }}">{{ team.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="box_type" class="form-label">Assign as</label>
+                            <select name="box_type" id="box_type" class="form-select" required>
+                                <option value="">-- Select Box Role --</option>
+                                <option value="A">Team A Box (Port 8081 / SSH 2221)</option>
+                                <option value="B">Team B Box (Port 8082 / SSH 2222)</option>
+                            </select>
+                            <div class="form-text">This will automatically assign the correct Docker container and ports.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="vulnbox_ip" class="form-label">Host LAN IP</label>
+                            <input type="text" name="vulnbox_ip" id="vulnbox_ip" class="form-control" required placeholder="e.g. 192.168.1.100">
+                            <div class="form-text">Must be your machine's actual IP address on the network, <strong>NOT 127.0.0.1</strong>.</div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100" id="save-assignment-btn">Save Assignment</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Create/Update AD Session</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning small">
+                        <i class="fas fa-info-circle"></i> <strong>Note:</strong> Target flags are automatically rotated and injected every 2 minutes by the background daemon. The flags you specify here are the initial flags.
+                    </div>
+                    <form method="POST">
+                        <input type="hidden" name="action" value="create_ad_session">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Session Number</label>
+                            <input type="number" name="session_number" class="form-control" required placeholder="e.g. 1">
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Team A</label>
+                                <select name="team_a_id" class="form-select" required>
+                                    <option value="">-- Select --</option>
+                                    {% for team in teams %}<option value="{{ team.id }}">{{ team.name }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Team B</label>
+                                <select name="team_b_id" class="form-select" required>
+                                    <option value="">-- Select --</option>
+                                    {% for team in teams %}<option value="{{ team.id }}">{{ team.name }}</option>{% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Team A Target Flag</label>
+                                <div class="input-group">
+                                    <input type="text" name="team_a_flag" id="flag_a" class="form-control" placeholder="CTF{random}">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('flag_a').value = 'CTF{' + Math.random().toString(36).substring(2, 10) + '}'"><i class="fas fa-random"></i></button>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Team B Target Flag</label>
+                                <div class="input-group">
+                                    <input type="text" name="team_b_flag" id="flag_b" class="form-control" placeholder="CTF{random}">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('flag_b').value = 'CTF{' + Math.random().toString(36).substring(2, 10) + '}'"><i class="fas fa-random"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100 mt-2">Save Session</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Current Assignments</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Team</th>
+                                <th>VulnBox Details</th>
+                                <th>Container Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in assignments %}
+                            <tr class="assignment-row" data-team-id="{{ assignment.team.id }}">
+                                <td class="fw-bold">{{ assignment.team.name }}</td>
+                                <td>
+                                    <strong>IP:</strong> {{ assignment.vulnbox_ip }}<br>
+                                    <small class="text-muted">Web: {{ assignment.web_port }}, SSH: {{ assignment.ssh_port }}</small><br>
+                                </td>
+                                <td>
+                                    {% if assignment.team.vulnbox %}
+                                        <span class="badge bg-danger">Occupied: {{ assignment.team.vulnbox.container_name }}</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Idle</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-3 text-muted">No assignments configured yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Current & Past Sessions</h5>
+                </div>
+                <div class="card-body p-0 table-responsive" id="sessions-table-container">
+                    <div class="p-4 text-center text-muted">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Loading sessions...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">AD Points Summary</h5>
+                    <div>
+                        <select id="session-filter" class="form-select form-select-sm" multiple style="min-width: 150px; max-height: 100px;">
+                            {% for sn in session_numbers %}
+                            <option value="{{ sn }}" selected>Session {{ sn }}</option>
+                            {% empty %}
+                            <option value="">No sessions yet</option>
+                            {% endfor %}
+                        </select>
+                        <small class="d-block mt-1"><i class="fas fa-filter"></i> Filter Sessions</small>
+                    </div>
+                </div>
+                <div class="card-body p-0 table-responsive" id="points-table-container">
+                    <div class="p-4 text-center text-muted">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Loading points summary...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const sessionsContainer = document.getElementById('sessions-table-container');
+    const pointsContainer = document.getElementById('points-table-container');
+    const sessionFilter = document.getElementById('session-filter');
+    
+    function fetchSessions() {
+        fetch("{% url 'ad_sessions_table' %}")
+            .then(response => response.text())
+            .then(html => {
+                sessionsContainer.innerHTML = html;
+            })
+            .catch(err => console.error('Failed to load sessions:', err));
+    }
+    
+    function fetchPoints() {
+        const selectedOptions = Array.from(sessionFilter.selectedOptions).map(opt => opt.value).filter(val => val !== "");
+        const queryParams = new URLSearchParams();
+        if (selectedOptions.length > 0) {
+            queryParams.append('sessions', selectedOptions.join(','));
+        }
+        
+        fetch("{% url 'ad_points_table' %}?" + queryParams.toString())
+            .then(response => response.text())
+            .then(html => {
+                pointsContainer.innerHTML = html;
+            })
+            .catch(err => console.error('Failed to load points:', err));
+    }
+    
+    // Initial fetch
+    fetchSessions();
+    fetchPoints();
+    
+    // Auto refresh every 10 seconds
+    setInterval(fetchSessions, 10000);
+    setInterval(fetchPoints, 10000);
+    
+    // Refetch points when filter changes
+    sessionFilter.addEventListener('change', fetchPoints);
+});
+</script>
+{% endblock %}

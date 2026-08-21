@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: ctf_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ctf_db
+      MYSQL_USER: ctf_user
+      MYSQL_PASSWORD: ctf_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  team_a_vulnbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.vulnbox
+    container_name: ctf_team_a_vulnbox
+    restart: always
+    ports:
+      - "0.0.0.0:8081:80"
+      - "0.0.0.0:2221:22"
+
+  team_b_vulnbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.vulnbox
+    container_name: ctf_team_b_vulnbox
+    restart: always
+    ports:
+      - "0.0.0.0:8082:80"
+      - "0.0.0.0:2222:22"
+
+volumes:
+  mysql_data: # Persistent volume for MySQL to handle container restarts without data wipe

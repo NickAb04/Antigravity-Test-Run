@@ -1,0 +1,54 @@
+FROM ubuntu:22.04
+
+# Avoid prompts during apt installs
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install SSH, Nginx, and PHP-FPM
+RUN apt-get update && apt-get install -y openssh-server nginx php-fpm sudo curl iputils-ping && \
+    mkdir /var/run/sshd
+
+# Create a weak user 'player' with password 'player'
+RUN useradd -m -s /bin/bash player && \
+    echo 'player:player' | chpasswd && \
+    adduser player sudo
+
+# Create the flag file that teams must protect/steal
+RUN echo "CTF{PLACEHOLDER_FLAG}" > /var/www/html/flag.txt && \
+    chmod 644 /var/www/html/flag.txt
+
+# Configure Nginx to use PHP-FPM
+RUN echo "server { \n\
+    listen 80 default_server; \n\
+    root /var/www/html; \n\
+    index index.php index.html index.htm; \n\
+    location / { try_files \$uri \$uri/ =404; } \n\
+    location ~ \\.php$ { \n\
+        include snippets/fastcgi-php.conf; \n\
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock; \n\
+    } \n\
+}" > /etc/nginx/sites-available/default
+
+# Create an intentionally vulnerable web app (Command Injection)
+RUN echo "<?php \n\
+echo '<h1>Network Diagnostic Tool</h1>'; \n\
+echo '<p>Enter an IP to ping:</p>'; \n\
+echo '<form method=\"GET\">'; \n\
+echo '<input type=\"text\" name=\"ip\" placeholder=\"127.0.0.1\">'; \n\
+echo '<input type=\"submit\" value=\"Ping\">'; \n\
+echo '</form>'; \n\
+if(isset(\$_GET['ip'])) { \n\
+    \$target = \$_GET['ip']; \n\
+    echo '<pre>'; \n\
+    system('ping -c 3 ' . \$target); \n\
+    echo '</pre>'; \n\
+} \n\
+?>" > /var/www/html/index.php
+
+# Create an entrypoint script to start all services
+RUN echo "#!/bin/bash\nservice php8.1-fpm start\nservice nginx start\n/usr/sbin/sshd -D" > /start.sh && \
+    chmod +x /start.sh
+
+EXPOSE 22 80
+
+CMD ["/start.sh"]
+

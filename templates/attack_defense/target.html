@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col text-center">
+        <h2>Attack-Defense Arena (PoC)</h2>
+        <p class="text-muted">Engage with live target environments to find hidden flags.</p>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-danger shadow-sm mb-4">
+            <div class="card-header bg-danger text-white fs-5 fw-bold">
+                {{ target.name }}
+                <span class="badge bg-light text-danger float-end px-3">{{ target.status }}</span>
+            </div>
+            <div class="card-body bg-light">
+                <p class="lead">{{ target.description }}</p>
+                <hr>
+                <div class="row text-center mt-4">
+                    <div class="col-md-6 border-end">
+                        <h6 class="text-muted text-uppercase mb-1">Target IP</h6>
+                        <h3 class="font-monospace text-dark">{{ target.ip_address }}</h3>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted text-uppercase mb-1">Target Port</h6>
+                        <h3 class="font-monospace text-primary">{{ target.port }}</h3>
+                    </div>
+                </div>
+                <div class="mt-4 text-center">
+                    <a href="http://{{ target.ip_address }}:{{ target.port }}" target="_blank" class="btn btn-lg btn-danger w-75 shadow-sm">
+                        Connect to Target Console
+                    </a>
+                </div>
+                <div class="alert alert-warning mt-4 text-center mb-0">
+                    <strong>Rules of Engagement:</strong> You are authorized to attack strictly on the provided IP/Port.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
